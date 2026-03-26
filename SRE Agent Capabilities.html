@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SRE AI Agent | Cloud-Native Investigation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* Deepened the background for maximum OLED-style contrast */
+    --bg: #02040a; 
+    --surface: rgba(255,255,255,0.02);
+    --surface-hover: rgba(255,255,255,0.04);
+    --border: rgba(255,255,255,0.08);
+    --border-hover: rgba(255,255,255,0.2);
+    --text: #f0f2f5;
+    --text-secondary: rgba(255,255,255,0.65);
+    --text-tertiary: rgba(255,255,255,0.4);
+    --blue: #5b9aff;
+    --blue-glow: rgba(91,154,255,0.2);
+    --purple: #a78bfa;
+    --purple-glow: rgba(167,139,250,0.2);
+    --cyan: #67e8f9;
+    --green: #6ee7b7;
+    --amber: #fbbf24;
+    --rose: #fb7185;
+    --radius: 16px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Scroll Reveal Animation Classes */
+  .reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .reveal.active {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .delay-1 { transition-delay: 0.1s; }
+  .delay-2 { transition-delay: 0.2s; }
+  .delay-3 { transition-delay: 0.3s; }
+
+  /* Ambient glow backgrounds - Made more vibrant */
+  .glow-top {
+    position: absolute;
+    top: -300px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 1000px;
+    height: 1000px;
+    background: radial-gradient(circle, rgba(91,154,255,0.12) 0%, rgba(167,139,250,0.08) 40%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .glow-mid {
+    position: absolute;
+    top: 2000px;
+    right: -200px;
+    width: 800px;
+    height: 800px;
+    background: radial-gradient(circle, rgba(167,139,250,0.08) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .page-wrap {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* NAV */
+  nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    padding: 16px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(2,4,10,0.6);
+    backdrop-filter: blur(24px) saturate(200%);
+    -webkit-backdrop-filter: blur(24px) saturate(200%);
+    border-bottom: 1px solid var(--border);
+  }
+  .nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: -0.3px;
+    position: relative;
+  }
+  .nav-brand-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  .nav-brand-title {
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+    background: linear-gradient(90deg, var(--blue), var(--purple), var(--cyan), var(--blue));
+    background-size: 300% 100%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: navGradientShift 6s ease-in-out infinite;
+  }
+  .nav-brand-sub {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    height: 14px;
+    overflow: hidden;
+    position: relative;
+  }
+  .nav-brand-sub-inner {
+    display: flex;
+    flex-direction: column;
+    animation: cycleSub 12s ease-in-out infinite;
+  }
+  .nav-brand-sub-inner span {
+    height: 14px;
+    line-height: 14px;
+    white-space: nowrap;
+    background: linear-gradient(90deg, var(--text-tertiary), var(--cyan), var(--text-tertiary));
+    background-size: 200% 100%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: subGlow 4s ease-in-out infinite;
+  }
+  @keyframes subGlow {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+  @keyframes cycleSub {
+    0%, 20%   { transform: translateY(0); }
+    25%, 45%  { transform: translateY(-14px); }
+    50%, 70%  { transform: translateY(-28px); }
+    75%, 95%  { transform: translateY(-42px); }
+    100%      { transform: translateY(0); }
+  }
+  @keyframes navGradientShift {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+  .nav-logo {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--blue), var(--purple));
+    box-shadow: 0 4px 16px var(--blue-glow), 0 0 20px rgba(167,139,250,0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 900;
+    color: white;
+    animation: logoPulse 4s ease-in-out infinite;
+    position: relative;
+  }
+  .nav-logo::after {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--blue), var(--purple), var(--cyan));
+    z-index: -1;
+    opacity: 0.4;
+    filter: blur(8px);
+    animation: logoPulse 4s ease-in-out infinite;
+  }
+  @keyframes logoPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.06); }
+  }
+  .nav-links {
+    display: flex;
+    gap: 32px;
+    list-style: none;
+  }
+  .nav-brand:hover .nav-logo {
+    box-shadow: 0 4px 24px var(--blue-glow), 0 0 30px rgba(167,139,250,0.3);
+    animation: none;
+    transform: scale(1.1) rotate(-4deg);
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .nav-brand:hover .nav-brand-title {
+    animation-duration: 1.5s;
+  }
+  .nav-brand:hover .nav-brand-sub-inner {
+    animation-duration: 4s;
+  }
+  .nav-links a {
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--text); }
+
+  /* CONTAINER */
+  .container { max-width: 1120px; margin: 0 auto; padding: 0 40px; }
+
+  /* HERO */
+  .hero {
+    padding: 200px 0 120px;
+    text-align: center;
+    position: relative;
+  }
+  .hero-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 6px 16px 6px 10px;
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 32px;
+    transition: border-color 0.3s, transform 0.3s;
+    box-shadow: inset 0 1px 1px rgba(255,255,255,0.05);
+  }
+  .hero-eyebrow:hover { 
+    border-color: var(--border-hover); 
+    transform: translateY(-2px);
+  }
+  .hero-eyebrow .pulse {
+    width: 8px;
+    height: 8px;
+    background: var(--green);
+    border-radius: 50%;
+    box-shadow: 0 0 12px rgba(110,231,183,0.8);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.85); }
+  }
+  .hero h1 {
+    font-size: 76px;
+    font-weight: 800;
+    letter-spacing: -3px;
+    line-height: 1.05;
+    margin-bottom: 24px;
+    background: linear-gradient(180deg, #ffffff 0%, rgba(255,255,255,0.5) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .hero h1 span {
+    background: linear-gradient(135deg, var(--blue), var(--purple));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .hero-sub {
+    font-size: 19px;
+    color: var(--text-secondary);
+    max-width: 640px;
+    margin: 0 auto 56px;
+    line-height: 1.7;
+    font-weight: 400;
+  }
+
+  /* Stats strip */
+  .stats-strip {
+    display: flex;
+    justify-content: center;
+    gap: 1px;
+    background: var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    max-width: 900px;
+    margin: 0 auto;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1);
+  }
+  .stat-cell {
+    flex: 1;
+    min-width: 0;
+    background: rgba(255,255,255,0.01);
+    backdrop-filter: blur(10px);
+    padding: 28px 16px;
+    text-align: center;
+    transition: background 0.3s;
+  }
+  .stat-cell:hover { background: rgba(255,255,255,0.04); }
+  .stat-cell {
+    box-shadow: inset 0 -2px 30px rgba(91,154,255,0.15), inset 0 2px 30px rgba(167,139,250,0.1);
+    background: linear-gradient(180deg, rgba(91,154,255,0.08) 0%, rgba(167,139,250,0.04) 100%);
+  }
+  .stat-val {
+    font-size: 36px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    animation: statPulse 3s ease-in-out infinite;
+  }
+
+  .stat-cell:nth-child(1) .stat-val { color: #5b9aff; animation-delay: 0s; }
+  .stat-cell:nth-child(2) .stat-val { color: #a78bfa; animation-delay: 0.5s; }
+  .stat-cell:nth-child(3) .stat-val { color: #6ee7b7; animation-delay: 1.0s; }
+  .stat-cell:nth-child(4) .stat-val { color: #fbbf24; animation-delay: 1.5s; }
+  .stat-cell:nth-child(5) .stat-val { color: #67e8f9; animation-delay: 2.0s; }
+
+  @keyframes statPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.06); }
+  }
+
+  /* "Zero" - the hero stat */
+  .stat-cell:nth-child(6) {
+    position: relative;
+  }
+  .stat-cell:nth-child(6)::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    background: linear-gradient(135deg, rgba(91,154,255,0.3), rgba(167,139,250,0.3));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    padding: 1px;
+    pointer-events: none;
+  }
+  .stat-cell:nth-child(6) .stat-val {
+    font-size: 48px;
+    font-weight: 900;
+    letter-spacing: -2px;
+    color: transparent;
+    background: linear-gradient(135deg, #67e8f9 0%, #5b9aff 35%, #a78bfa 65%, #f0abfc 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    position: relative;
+    animation: statPulse 3s ease-in-out infinite;
+    animation-delay: 2.5s;
+  }
+  .stat-cell:nth-child(6) .stat-label {
+    color: var(--text-secondary);
+    font-size: 12px;
+    letter-spacing: 1.5px;
+  }
+  
+  .stat-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  /* SECTIONS */
+  .section { padding: 120px 0; }
+  .section-header { margin-bottom: 64px; }
+  .section-eyebrow {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--blue);
+    margin-bottom: 12px;
+  }
+  .section-header h2 {
+    font-size: 48px;
+    font-weight: 800;
+    letter-spacing: -2px;
+    line-height: 1.15;
+    margin-bottom: 16px;
+  }
+  .section-header p {
+    font-size: 18px;
+    color: var(--text-secondary);
+    max-width: 580px;
+    line-height: 1.6;
+  }
+
+  /* TEASER BENTO GRID */
+  .bento {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-auto-rows: minmax(220px, auto);
+    gap: 16px;
+  }
+  .bento-card {
+    background: linear-gradient(180deg, var(--surface) 0%, rgba(255,255,255,0) 100%);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+  }
+  .bento-card:hover {
+    border-color: var(--border-hover);
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
+  }
+  .bento-card.span-2 { grid-column: span 2; }
+  .bento-card .card-glow {
+    position: absolute;
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    filter: blur(60px);
+    opacity: 0.1;
+    top: -40px;
+    right: -40px;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+  }
+  .bento-card:hover .card-glow { opacity: 0.25; }
+  .bento-icon {
+    font-size: 36px;
+    margin-bottom: 24px;
+    position: relative;
+    z-index: 1;
+  }
+  .bento-card h3 {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    letter-spacing: -0.5px;
+    position: relative;
+    z-index: 1;
+  }
+  .bento-card p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* CAPABILITIES LIST */
+  .cap-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .cap-card {
+    background: linear-gradient(180deg, var(--surface) 0%, rgba(255,255,255,0) 100%);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    transition: all 0.3s ease;
+  }
+  .cap-card:hover {
+    border-color: var(--border-hover);
+    transform: translateX(4px);
+    background: rgba(255,255,255,0.03);
+  }
+  .cap-icon {
+    width: 48px; height: 48px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; flex-shrink: 0;
+  }
+  .cap-card h4 { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+  .cap-card p { font-size: 14px; color: var(--text-secondary); }
+  
+  .cat-blue .cap-icon { background: rgba(91,154,255,0.1); color: var(--blue); }
+  .cat-orange .cap-icon { background: rgba(251,191,36,0.1); color: var(--amber); }
+  .cat-green .cap-icon { background: rgba(110,231,183,0.1); color: var(--green); }
+  .cat-purple .cap-icon { background: rgba(167,139,250,0.1); color: var(--purple); }
+  .cat-rose .cap-icon { background: rgba(251,113,133,0.1); color: var(--rose); }
+
+  .cap-category {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 0 8px;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--text-secondary);
+  }
+  .cap-category .cat-dot { width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 8px currentColor; }
+
+  /* PROTOCOL TIMELINE */
+  .timeline { position: relative; max-width: 720px; }
+  .timeline::before {
+    content: ''; position: absolute; left: 28px; top: 0; bottom: 0; width: 2px;
+    background: linear-gradient(180deg, var(--blue), var(--purple), transparent);
+    opacity: 0.3;
+  }
+  .tl-step { display: flex; align-items: flex-start; gap: 32px; padding-bottom: 48px; position: relative; }
+  .tl-dot {
+    width: 56px; height: 56px; border-radius: 50%;
+    background: var(--bg);
+    border: 2px solid rgba(91,154,255,0.4);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 800; color: var(--blue);
+    flex-shrink: 0; z-index: 1;
+    transition: all 0.3s ease;
+  }
+  .tl-step:hover .tl-dot {
+    border-color: var(--blue);
+    box-shadow: 0 0 24px var(--blue-glow);
+    transform: scale(1.1);
+  }
+  .tl-step-critical .tl-dot {
+    border-color: rgba(251,113,133,0.5);
+    color: var(--rose);
+    background: rgba(251,113,133,0.04);
+  }
+  .tl-step-critical:hover .tl-dot {
+    border-color: var(--rose);
+    box-shadow: 0 0 28px rgba(251,113,133,0.25);
+    transform: scale(1.12);
+  }
+  .tl-step-critical .tl-body h4 {
+    background: linear-gradient(90deg, var(--rose), #fbbf24);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .tl-body { padding-top: 8px; }
+  .tl-body h4 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+  .tl-body p { font-size: 15px; color: var(--text-secondary); }
+
+  /* DEEP DIVE TABLE */
+  .dd-wrap {
+    background: linear-gradient(180deg, var(--surface) 0%, rgba(255,255,255,0) 100%);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+  }
+  .dd-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .dd-table thead th {
+    text-align: left; padding: 16px 24px; font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 1px; color: var(--text-tertiary);
+    border-bottom: 1px solid var(--border); background: rgba(0,0,0,0.2);
+  }
+  .dd-table td { padding: 16px 24px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .dd-table tr:last-child td { border-bottom: none; }
+  .dd-table tr { transition: background 0.2s; }
+  .dd-table tr:hover td { background: rgba(255,255,255,0.03); }
+  .dd-table .svc-name { font-weight: 700; letter-spacing: -0.2px; }
+  .dd-table .lang-tag {
+    display: inline-block; padding: 2px 10px; border-radius: 6px; font-size: 11px;
+    font-weight: 600; background: rgba(255,255,255,0.05); color: var(--text-secondary);
+  }
+  .tier-pill {
+    display: inline-block; font-size: 11px; font-weight: 700; padding: 4px 12px;
+    border-radius: 100px; letter-spacing: 0.3px;
+  }
+  .t1 { background: rgba(251,113,133,0.1); color: var(--rose); border: 1px solid rgba(251,113,133,0.2); }
+  .t2 { background: rgba(251,191,36,0.1); color: var(--amber); border: 1px solid rgba(251,191,36,0.2); }
+  .dd-table .dd-desc { font-size: 13px; color: var(--text-secondary); }
+
+  /* ROADMAP */
+  .roadmap-section { margin-bottom: 48px; }
+  .roadmap-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+  .roadmap-header h3 { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; }
+  .rm-badge {
+    font-size: 11px; font-weight: 700; padding: 4px 14px;
+    border-radius: 100px; letter-spacing: 0.3px;
+  }
+  .rm-high { background: rgba(251,113,133,0.1); color: var(--rose); border: 1px solid rgba(251,113,133,0.2); }
+  .rm-med { background: rgba(251,191,36,0.1); color: var(--amber); border: 1px solid rgba(251,191,36,0.2); }
+  .rm-low { background: rgba(255,255,255,0.05); color: var(--text-tertiary); border: 1px solid rgba(255,255,255,0.1); }
+  .roadmap-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .rm-card {
+    background: linear-gradient(180deg, var(--surface) 0%, rgba(255,255,255,0) 100%);
+    border: 1px solid var(--border); border-radius: 12px; padding: 20px;
+    transition: all 0.3s ease;
+  }
+  .rm-card:hover { border-color: var(--border-hover); transform: translateY(-2px); background: rgba(255,255,255,0.03); }
+  .rm-card .rm-num { font-size: 11px; font-weight: 800; color: var(--text-tertiary); margin-bottom: 8px; }
+  .rm-card h4 { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+  .rm-card p { font-size: 13px; color: var(--text-secondary); }
+
+  /* CHAT DEMO - Premium Polish */
+  .chat-window {
+    background: rgba(10,12,16,0.8); backdrop-filter: blur(20px);
+    border: 1px solid var(--border); border-radius: 20px; overflow: hidden;
+    max-width: 860px; margin: 0 auto;
+    box-shadow: 0 50px 100px -20px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.05) inset;
+  }
+  .chat-titlebar {
+    display: flex; align-items: center; gap: 10px; padding: 16px 24px;
+    border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.02);
+  }
+  .chat-dots { display: flex; gap: 8px; }
+  .chat-dots span { width: 12px; height: 12px; border-radius: 50%; }
+  .chat-dots span:nth-child(1) { background: #ff5f57; box-shadow: 0 0 8px rgba(255,95,87,0.4); }
+  .chat-dots span:nth-child(2) { background: #febc2e; box-shadow: 0 0 8px rgba(254,188,46,0.4); }
+  .chat-dots span:nth-child(3) { background: #28c840; box-shadow: 0 0 8px rgba(40,200,64,0.4); }
+  .chat-title-text { flex: 1; text-align: center; font-size: 12px; font-weight: 600; color: var(--text-tertiary); letter-spacing: 0.5px; }
+  
+  .chat-body { padding: 32px; display: flex; flex-direction: column; gap: 24px; max-height: 800px; overflow-y: auto; }
+  .chat-body::-webkit-scrollbar { width: 6px; }
+  .chat-body::-webkit-scrollbar-track { background: transparent; }
+  .chat-body::-webkit-scrollbar-thumb { background: var(--border-hover); border-radius: 10px; }
+
+  .chat-msg { display: flex; gap: 16px; max-width: 88%; }
+  .chat-msg.user { align-self: flex-end; flex-direction: row-reverse; }
+  .chat-msg.agent { align-self: flex-start; }
+  .chat-avatar {
+    width: 36px; height: 36px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; flex-shrink: 0; margin-top: 2px; font-weight: 800;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  }
+  .chat-msg.user .chat-avatar { background: linear-gradient(135deg, var(--amber), var(--rose)); color: #000; }
+  .chat-msg.agent .chat-avatar { background: linear-gradient(135deg, var(--blue), var(--purple)); color: white; }
+  .chat-bubble {
+    border-radius: 16px; padding: 16px 20px; font-size: 14px;
+    line-height: 1.6; position: relative; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+  .chat-msg.user .chat-bubble {
+    background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+    color: var(--text); border-bottom-right-radius: 4px;
+  }
+  .chat-msg.agent .chat-bubble {
+    background: rgba(91,154,255,0.05); border: 1px solid rgba(91,154,255,0.15);
+    color: var(--text); border-bottom-left-radius: 4px;
+  }
+
+  .chat-alert-block {
+    background: rgba(0,0,0,0.4); border: 1px solid rgba(251,113,133,0.3);
+    border-radius: 8px; padding: 16px; margin: 12px 0 4px;
+    font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace; font-size: 12px;
+    line-height: 1.6; color: var(--text-secondary);
+  }
+  .chat-alert-block .alert-name { color: var(--rose); font-weight: 700; }
+  .chat-alert-block .alert-label { color: var(--text-tertiary); }
+  .chat-alert-block .alert-val { color: var(--cyan); }
+  
+  .chat-step {
+    display: flex; align-items: flex-start; gap: 12px; margin: 16px 0 0;
+    padding: 12px 16px; background: rgba(0,0,0,0.2); border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.05);
+  }
+  .chat-step-num {
+    background: var(--surface-hover); color: var(--blue); font-size: 11px;
+    font-weight: 800; min-width: 24px; height: 24px; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center; border: 1px solid var(--border);
+  }
+  .chat-step-body { font-size: 13px; line-height: 1.6; }
+  .chat-step-body strong { color: var(--text); }
+  .chat-finding { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; margin: 2px 2px; }
+  .finding-ok { background: rgba(110,231,183,0.1); color: var(--green); border: 1px solid rgba(110,231,183,0.2); }
+  .finding-info { background: rgba(91,154,255,0.1); color: var(--blue); border: 1px solid rgba(91,154,255,0.2); }
+
+  .chat-result-table {
+    width: 100%; border-collapse: collapse; margin: 16px 0 8px; font-size: 12px;
+    background: rgba(0,0,0,0.2); border-radius: 8px; overflow: hidden;
+  }
+  .chat-result-table th {
+    text-align: left; padding: 10px 12px; font-size: 10px; font-weight: 700;
+    text-transform: uppercase; color: var(--text-tertiary);
+    border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.02);
+  }
+  .chat-result-table td { padding: 10px 12px; color: var(--text-secondary); border-bottom: 1px solid rgba(255,255,255,0.02); }
+  .chat-result-table .zero { color: var(--text-tertiary); }
+
+  .verdict {
+    margin-top: 16px; padding: 16px 20px; border-radius: 12px;
+    font-size: 14px; line-height: 1.6; background: rgba(110,231,183,0.05);
+    border: 1px solid rgba(110,231,183,0.2);
+  }
+  .verdict-ok { background: rgba(110,231,183,0.06); border: 1px solid rgba(110,231,183,0.12); }
+  .verdict-ok strong { color: var(--green); }
+  .chat-timestamp { font-size: 11px; color: var(--text-tertiary); text-align: center; padding: 8px 0; font-weight: 600; letter-spacing: 0.5px; }
+
+  /* FOOTER */
+  footer { padding: 60px 40px; text-align: center; border-top: 1px solid var(--border); }
+  footer p { font-size: 14px; color: var(--text-tertiary); }
+  footer .footer-brand {
+    font-weight: 700;
+    background: linear-gradient(90deg, var(--blue), var(--purple), var(--cyan));
+    background-size: 200% 100%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: navGradientShift 6s ease-in-out infinite;
+  }
+
+  /* Divider */
+  .divider { height: 1px; background: linear-gradient(90deg, transparent, var(--border), transparent); margin: 0 auto; max-width: 1000px; }
+
+  @media (max-width: 900px) {
+    .hero h1 { font-size: 48px; letter-spacing: -1.5px; }
+    .bento { grid-template-columns: 1fr; }
+    .bento-card.span-2 { grid-column: span 1; }
+    .cap-grid { grid-template-columns: 1fr; }
+    .roadmap-grid { grid-template-columns: 1fr; }
+    .stats-strip { flex-direction: column; gap: 1px; }
+    .nav-links { display: none; }
+    .chat-msg { max-width: 100%; }
+    .container { padding: 0 20px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="glow-top"></div>
+<div class="glow-mid"></div>
+
+<div class="page-wrap">
+
+<nav>
+  <div class="nav-brand">
+    <div class="nav-logo">S</div>
+    <div class="nav-brand-text">
+      <span class="nav-brand-title">SRE Agent</span>
+      <div class="nav-brand-sub">
+        <div class="nav-brand-sub-inner">
+          <span>AI-Powered</span>
+          <span>Alert</span>
+          <span>Triage</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <ul class="nav-links">
+    <li><a href="#capabilities">Capabilities</a></li>
+    <li><a href="#protocol">How It Works</a></li>
+    <li><a href="#live-demo">Live Demo</a></li>
+    <li><a href="#all-features">All Features</a></li>
+  </ul>
+</nav>
+
+<div class="hero reveal">
+  <div class="container">
+    <div class="hero-eyebrow">
+      <span class="pulse"></span>
+      Autonomous SRE Agent
+    </div>
+    <h1>Your AI-powered<br><span>SRE teammate</span></h1>
+    <p class="hero-sub">An intelligent agent that knows our architecture, reads our logs, queries our metrics, searches our incidents, and investigates production issues like a senior engineer who&rsquo;s been here since day one.</p>
+    <div class="stats-strip reveal delay-1">
+      <div class="stat-cell">
+        <div class="stat-val">18</div>
+        <div class="stat-label">Capabilities</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-val">Auto</div>
+        <div class="stat-label">End-to-End Investigations</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-val">&lt;4m</div>
+        <div class="stat-label">Time to Triage</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-val">Live</div>
+        <div class="stat-label">Code ↔ Logs Correlation</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-val">24/7</div>
+        <div class="stat-label">Senior-Level Context</div>
+      </div>
+      <div class="stat-cell">
+        <div class="stat-val">Zero</div>
+        <div class="stat-label">Context Switching</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<div class="section reveal" id="capabilities">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-eyebrow">At a Glance</div>
+      <h2>What can it do?</h2>
+      <p>Give it an alert, an error, or a question about the system. Here&rsquo;s what it brings to the table.</p>
+    </div>
+
+    <div class="bento">
+      <div class="bento-card span-2 reveal">
+        <div class="card-glow" style="background:var(--blue)"></div>
+        <div class="bento-icon">&#x1F50D;</div>
+        <h3>Query Incident History</h3>
+        <p>Searches past incident tickets by alert name, service, or error pattern. Instantly surfaces past root causes, resolutions, and open action items before you even look at logs. Pattern matching against your team&rsquo;s institutional memory.</p>
+      </div>
+      <div class="bento-card reveal delay-1">
+        <div class="card-glow" style="background:var(--purple)"></div>
+        <div class="bento-icon">&#x1F4D6;</div>
+        <h3>Find Runbooks &amp; Documentation</h3>
+        <p>Given an alert name, finds the matching runbook with battle-tested investigation steps. Dozens of runbook pages and knowledge base articles at its fingertips.</p>
+      </div>
+      <div class="bento-card reveal delay-2">
+        <div class="card-glow" style="background:var(--cyan)"></div>
+        <div class="bento-icon">&#x1F4CA;</div>
+        <h3>Query Metrics</h3>
+        <p>100+ custom metrics. CPU, memory, event loop delay, error rates, blast radius fleet metrics (pod count, restart sweep, session load, memory outlier detection).</p>
+      </div>
+      <div class="bento-card reveal">
+        <div class="card-glow" style="background:var(--green)"></div>
+        <div class="bento-icon">&#x1F4DC;</div>
+        <h3>Logs &amp; Log Analytics</h3>
+        <p>Real-time queries with trace correlation. SQL-like aggregation for top-errors, deployment before/after comparison, blast radius scoping (tenants, sessions, pods), and infrastructure audit logs.</p>
+      </div>
+      <div class="bento-card span-2 reveal delay-1">
+        <div class="card-glow" style="background:var(--amber)"></div>
+        <div class="bento-icon">&#x1F4BB;</div>
+        <h3>Clone Any Service &amp; Trace Stack Traces</h3>
+        <p>Sees a stack trace in the logs? It clones the service repo, locates the exact source file and line, reads the code, and explains the logic flaw. Works across all services. Context-aware code correlation powered by deep architectural knowledge.</p>
+      </div>
+      <div class="bento-card span-2 reveal delay-2">
+        <div class="card-glow" style="background:var(--purple)"></div>
+        <div class="bento-icon">&#x1F3D7;&#xFE0F;</div>
+        <h3>Autonomous Architecture Learning &amp; Service Deep Dives</h3>
+        <p><b>Built through autonomous learning</b> &mdash; the agent analyzes each service, mapping request flows, dependencies, and service criticality automatically. It understands the full cloud-native architecture, including the request lifecycle, layered security model, failure cascades, and dependency graph. Includes detailed insights into multiple services, covering critical paths, metrics, common failure modes with symptom-to-cause mapping, and key configuration details.</p>
+      </div>
+      <div class="bento-card reveal">
+        <div class="card-glow" style="background:var(--rose)"></div>
+        <div class="bento-icon">&#x1F4E6;</div>
+        <h3>Release Notes &amp; Diffs</h3>
+        <p>Compares any two releases. Shows merged PRs, linked tickets, authors. Finds which release contains a specific change.</p>
+      </div>
+      <div class="bento-card span-2 reveal delay-1">
+        <div class="card-glow" style="background:var(--rose)"></div>
+        <div class="bento-icon">&#x1F6A8;</div>
+        <h3>Mandatory Blast Radius Assessment</h3>
+        <p>Before root cause analysis, quantify the impact: affected tenants, sessions, pods, regions, and duration. Multi-dimension scoping with SLA classification (Negligible to Critical) and escalation guidance. Data-driven, never assumed.</p>
+      </div>
+      <div class="bento-card reveal delay-2">
+        <div class="card-glow" style="background:var(--cyan)"></div>
+        <div class="bento-icon">&#x1F333;</div>
+        <h3>Incident Scoping Decision Tree</h3>
+        <p>Service A is down? Complete outage. Service B is down? Broken flow only. Structured blast radius determination for any failure.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<div class="section reveal" id="protocol">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-eyebrow">How It Works</div>
+      <h2>The Deterministic 8-Step Investigation Protocol</h2>
+      <p>To guarantee the agent doesn&rsquo;t hallucinate findings or skip critical diagnostic phases, its behavior is governed by a strictly sequenced protocol. It didn&rsquo;t just run queries &mdash; it systematically encoded the exact method a senior engineer uses to diagnose complex systems, culminating in a structured investigation report.</p>
+    </div>
+
+    <div class="timeline reveal delay-1">
+      <div class="tl-step tl-step-critical"><div class="tl-dot">1</div><div class="tl-body"><h4>Anchor the Timestamp</h4><p>MANDATORY first step. Calculate absolute start/end times (&plusmn;1h) to prevent temporal drift. Extract the alert&rsquo;s exact UTC time, compute query boundaries, and state the window explicitly. All subsequent queries use these absolute timestamps &mdash; never relative time windows that silently drift.</p></div></div>
+      <div class="tl-step"><div class="tl-dot">2</div><div class="tl-body"><h4>Historical Synthesis</h4><p>Query incident tracking and knowledge base systems for similar past incidents or runbooks to establish a known baseline. If a matching pattern is found, reference immediately &mdash; skip redundant investigation.</p></div></div>
+      <div class="tl-step"><div class="tl-dot">3</div><div class="tl-body"><h4>Triage &amp; Blast Radius</h4><p>Parse the alert and scope impact across tenants, sessions, services, and regions. Quantify the blast radius with data-driven metrics: who is affected, how many, and how severely. Determines escalation level &mdash; from &ldquo;negligible&rdquo; to &ldquo;critical.&rdquo;</p></div></div>
+      <div class="tl-step"><div class="tl-dot">4</div><div class="tl-body"><h4>System Pulse Check</h4><p>Scan core metrics (CPU, memory, errors, latency) for correlated anomalies. Identify whether the signal is isolated or part of a broader systemic pattern across the infrastructure.</p></div></div>
+      <div class="tl-step"><div class="tl-dot">5</div><div class="tl-body"><h4>Log &amp; Error Analysis</h4><p>Aggregate and classify errors to map the failure surface across services and pods. Top-errors ranking, pod distribution, multi-service sweep &mdash; building the full error landscape.</p></div></div>
+      <div class="tl-step"><div class="tl-dot">6</div><div class="tl-body"><h4>Trace Deep-Dive</h4><p>Follow the failing request via distributed traces to isolate the exact point of failure. Cross-service span hierarchies, slow span identification, and request flow visualization.</p></div></div>
+      <div class="tl-step"><div class="tl-dot">7</div><div class="tl-body"><h4>Code &amp; Deployment Correlation</h4><p>Link the issue to source code and recent deployments to identify the root cause. Locate the source file from stack traces, compare error rates before vs. after deploys, and surface the exact change that broke it.</p></div></div>
+      <div class="tl-step tl-step-critical"><div class="tl-dot">8</div><div class="tl-body"><h4>Adversarial Verification</h4><p>The mandatory adversarial gate. Re-validate all assumptions &mdash; time window, region, environment, queries. Does the root cause timestamp align with the alert? Does the evidence actually support the conclusion? Any mismatch invalidates the result. Born from a real misdiagnosis where a wrong time window produced a plausible but incorrect answer. A single CRITICAL failure invalidates the entire investigation.</p></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<div class="section reveal" id="live-demo">
+  <div class="container">
+    <div class="section-header" style="text-align:center;">
+      <div class="section-eyebrow">Real Investigation</div>
+      <h2>See it in action</h2>
+      <p style="margin:0 auto;">A real alert came in at 4:53 PM on a Thursday. Here&rsquo;s exactly what happened.</p>
+    </div>
+
+    <div class="chat-window reveal delay-2">
+      <div class="chat-titlebar">
+        <div class="chat-dots"><span></span><span></span><span></span></div>
+        <div class="chat-title-text">SRE Agent &mdash; Incident Investigation</div>
+        <div style="width:36px;"></div>
+      </div>
+      <div class="chat-body">
+
+        <div class="chat-timestamp">Thursday, 4:53 PM</div>
+
+        <div class="chat-msg user reveal">
+          <div class="chat-avatar">Y</div>
+          <div class="chat-bubble">
+            help me help me !!!<br>i got an alert
+            <div class="chat-alert-block">
+              <span class="alert-name">&#x274C; SyntheticTestNavigationFailures</span><br>
+              <span class="alert-label">test_flow:</span> <span class="alert-val">navigate-primary-lb</span><br>
+              <span class="alert-label">edge_pop:</span> <span class="alert-val">POP-EU-1</span><br>
+              <span class="alert-label">edge_region:</span> <span class="alert-val">region-eu-west</span><br>
+              <span class="alert-label">edge_ip:</span> <span class="alert-val">192.0.2.170</span><br>
+              <span class="alert-label">environment_type:</span> <span class="alert-val">prod</span><br>
+              <span class="alert-label">severity:</span> <span class="alert-val">critical</span><br>
+              <span class="alert-label">tenant_id:</span> <span class="alert-val">TEST_TENANT_1</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="chat-msg agent reveal delay-1">
+          <div class="chat-avatar">S</div>
+          <div class="chat-bubble">
+            On it. Let me parse this alert before anyone panics more than you already are.
+
+            <div class="chat-step">
+              <div class="chat-step-num">1</div>
+              <div class="chat-step-body">
+                <strong>Timestamp anchored.</strong> Alert at Thu 4:53 PM &rarr; <code>2026-03-05T14:53:00Z</code> UTC. Query window: <code>13:53&ndash;15:53 UTC</code>.
+                <br><br>
+                <span class="chat-finding finding-info">synthetic monitoring</span> alert, not a core service alert. Tenant <code>TEST_TENANT_1</code> is the synthetic test tenant &mdash; not a real customer. POP: <code>POP-EU-1</code>, EDGE IP: <code>192.0.2.170</code>.
+              </div>
+            </div>
+
+            <div class="chat-step">
+              <div class="chat-step-num">2</div>
+              <div class="chat-step-body">
+                <strong>Querying synthetic tester logs.</strong> Filtering for POP-EU-1 failures in the last hour.
+                <br><br>
+                <span class="chat-finding finding-info">reason: ISOLATION_VALIDATION_FAILED</span> <span class="chat-finding finding-info">enriched: EDGE_CONNECTIVITY_FAILED</span>
+                <br><br>
+                Every failure reports <code>envStatus: inactive</code> and version <code>v1.79.0</code>. The primary-lb namespace looks like it&rsquo;s been decommissioned.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="chat-msg agent reveal delay-2">
+          <div class="chat-avatar">S</div>
+          <div class="chat-bubble">
+            <div class="chat-step">
+              <div class="chat-step-num">3</div>
+              <div class="chat-step-body">
+                <strong>Multi-POP aggregation.</strong> Expanding the query across all POPs to see if this is POP-EU-1-specific.
+                <br><br>
+                It is not. 174 failures across <strong>6 POPs</strong>:
+
+                <table class="chat-result-table" style="margin-top:12px">
+                  <thead><tr><th>POP</th><th>Failures</th></tr></thead>
+                  <tbody>
+                    <tr><td>POP-EU-1</td><td>48</td></tr>
+                    <tr><td>POP-EU-2</td><td>28</td></tr>
+                    <tr><td>POP-US-1</td><td>26</td></tr>
+                    <tr><td>POP-AS-1</td><td>25</td></tr>
+                    <tr><td>POP-US-2</td><td>24</td></tr>
+                    <tr><td>POP-ME-1</td><td>23</td></tr>
+                  </tbody>
+                </table>
+
+                <span class="chat-finding finding-info">100% EDGE_CONNECTIVITY_FAILED</span> &mdash; every single failure is the same pattern. This is systemic, not localized.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="chat-timestamp reveal delay-2">4:54 PM &mdash; Checking infrastructure logs...</div>
+
+        <div class="chat-msg agent reveal delay-3">
+          <div class="chat-avatar">S</div>
+          <div class="chat-bubble">
+            <div class="chat-step">
+              <div class="chat-step-num">4</div>
+              <div class="chat-step-body">
+                <strong>Egress Router logs (region-eu-west).</strong> Found heavy upstream connectivity errors:
+                <br><br>
+                <code>dial tcp 35.246.81.205:8080: i/o timeout</code> &mdash; repeated across multiple primary-lb tenants.
+                <br><br>
+                <span class="chat-finding finding-info">Egress router can&rsquo;t reach primary-lb endpoints</span> &mdash; consistent with the <code>v1.79.0</code> namespace being inactive/scaled down.
+              </div>
+            </div>
+
+            <div class="chat-step">
+              <div class="chat-step-num">5</div>
+              <div class="chat-step-body">
+                <strong>Multi-service sweep (CORE_SYS, region-eu-west).</strong> Swept all core services for errors:
+
+                <table class="chat-result-table" style="margin-top:12px">
+                  <thead><tr><th>Service</th><th>Errors</th><th>Note</th></tr></thead>
+                  <tbody>
+                    <tr><td>core-engine-service</td><td>32</td><td>Single tenant, single pod</td></tr>
+                    <tr><td>api-gateway</td><td>19</td><td>Context canceled (normal)</td></tr>
+                    <tr><td>edge-proxy-service</td><td class="zero">0</td><td>&mdash;</td></tr>
+                    <tr><td>auth-service</td><td class="zero">0</td><td>&mdash;</td></tr>
+                  </tbody>
+                </table>
+
+                The 32 engine errors are all from <strong>one tenant</strong> (CUSTOMER_TENANT_A) on <strong>one pod</strong> &mdash; a configuration issue, completely unrelated to this alert. <span class="chat-finding finding-ok">No systemic CORE_SYS errors.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="chat-msg agent reveal delay-1">
+          <div class="chat-avatar">S</div>
+          <div class="chat-bubble">
+            <div class="verdict verdict-ok">
+              <strong>Verdict: Medium severity. No customers affected.</strong>
+              <br><br>
+              The primary-lb namespace <code>v1.79.0</code> has been decommissioned as part of the <code>v1.80.0</code> rollout. The egress router is still routing primary-lb traffic to endpoints that no longer accept connections, causing <code>dial tcp i/o timeout</code> across all POPs.
+              <br><br>
+              The synthetic tester config hasn&rsquo;t been updated to reflect this transition &mdash; it keeps testing primary-lb and failing 174 times. All failures are from test tenants. Zero customer impact.
+            </div>
+
+            <div class="chat-step">
+              <div class="chat-step-num">&rarr;</div>
+              <div class="chat-step-body">
+                <strong>Next steps:</strong><br>
+                1. Confirm <code>v1.79.0</code> decommission is intentional<br>
+                2. Update synthetic tester config to stop testing primary-lb<br>
+                3. Investigate CUSTOMER_TENANT_A profile issue separately
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="chat-msg user reveal delay-2">
+          <div class="chat-avatar">Y</div>
+          <div class="chat-bubble">
+            ok so give me the incident brief, what do i put in the ticket?
+          </div>
+        </div>
+
+        <div class="chat-msg agent reveal delay-3">
+          <div class="chat-avatar">S</div>
+          <div class="chat-bubble">
+            Here&rsquo;s your structured incident brief &mdash; copy-paste ready:
+
+            <table class="chat-result-table" style="margin-top:16px">
+              <thead><tr><th style="width:120px">Dimension</th><th>Detail</th></tr></thead>
+              <tbody>
+                <tr><td><strong>What</strong></td><td><strong>Monitoring plane</strong> &mdash; <code>SyntheticTestNavigateIsolatedFailures</code>. primary-lb detected as inactive (<code>EDGE_CONNECTIVITY_FAILED</code>) across all POPs.</td></tr>
+                <tr><td><strong>Where</strong></td><td>POP <code>POP-EU-1</code> (alert target), but failures span <strong>6 POPs</strong>. CORE_SYS region: <code>region-eu-west</code>. Not POP-specific &mdash; systemic primary-lb issue.</td></tr>
+                <tr><td><strong>When</strong></td><td><code>2026-03-05T14:53:00Z</code> (UTC). First failures at ~15:08 UTC. Detected by monitoring alert.</td></tr>
+                <tr><td><strong>Who</strong></td><td>Synthetic test tenant <code>TEST_TENANT_1</code> (not a real customer). Zero customer impact.</td></tr>
+                <tr><td><strong>Why</strong></td><td>primary-lb namespace <code>v1.79.0</code> decommissioned during <code>v1.80.0</code> rollout. Egress router can no longer reach decommissioned endpoints.</td></tr>
+                <tr><td><strong>Mitigation</strong></td><td>Update synthetic tester config to stop testing primary-lb, or wait for self-suppression. No code change needed.</td></tr>
+                <tr><td><strong>Owner</strong></td><td>Infra/deployment team &mdash; synthetic tester config not updated post-rollout.</td></tr>
+                <tr><td><strong>Severity</strong></td><td><span style="display:inline-block;padding:2px 10px;border-radius:100px;font-size:11px;font-weight:700;background:rgba(251,191,36,0.1);color:var(--amber);border:1px solid rgba(251,191,36,0.2);">SEV-3 (Medium)</span></td></tr>
+              </tbody>
+            </table>
+
+            That&rsquo;s your full scoping. The loudest alert in the queue turned out to be our own synthetic tester yelling at a namespace that&rsquo;s already been retired. <span class="chat-finding finding-ok">No customers harmed in the making of this incident.</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<div class="section reveal" id="all-features">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-eyebrow">Layered Architecture</div>
+      <h2>All capabilities</h2>
+      <p>Built with a layered approach: generic reusable skills that any agent can leverage, plus SRE-dedicated extensions that apply an operational perspective on top.</p>
+    </div>
+
+    <div class="cap-grid">
+      <div class="cap-category reveal"><span class="cat-dot" style="background:var(--blue)"></span> Executable Skill Layer &mdash; Generic Skills</div>
+
+      <div class="cap-card cat-blue reveal delay-1"><div class="cap-icon">&#x1F4C3;</div><div><h4>Log Queries</h4><p>Real-time log queries across all environments with trace correlation, transaction-centric analysis, and scoping filters. Not SRE-specific &mdash; can be used by developers, QA, or other agents on demand.</p></div></div>
+      <div class="cap-card cat-blue reveal delay-2"><div class="cap-icon">&#x1F4CA;</div><div><h4>Deep Log Analytics</h4><p>SQL-like aggregation over logs. Top-errors ranking, pod distribution, deployment before/after comparison for regression detection. Reusable for any analytical workflow.</p></div></div>
+      <div class="cap-card cat-blue reveal delay-1"><div class="cap-icon">&#x1F4C8;</div><div><h4>Metrics Queries</h4><p>Query 100+ custom metrics. CPU, memory, event loop delay, error rates, fleet-level metrics (pod count, restart sweep, session load, memory outlier detection). Links to dashboards included.</p></div></div>
+      <div class="cap-card cat-blue reveal delay-2"><div class="cap-icon">&#x1F517;</div><div><h4>Distributed Tracing</h4><p>Trace API spans, cross-service latency, and request flow visualization. Follow a single request across the entire service mesh to pinpoint where it breaks.</p></div></div>
+      <div class="cap-card cat-blue reveal delay-1"><div class="cap-icon">&#x1F4BB;</div><div><h4>Clone &amp; Read Source Code</h4><p>Given a stack trace, clones the service repo, locates the exact source file and line, reads the code, and explains the logic. Works across all services. Reusable by any developer or agent.</p></div></div>
+      <div class="cap-card cat-blue reveal delay-2"><div class="cap-icon">&#x1F4E6;</div><div><h4>Release Notes &amp; Diffs</h4><p>Compares any two releases. Shows merged PRs, linked tickets, authors. Finds which release contains a specific change. Version-by-timestamp lookup and commit diffs.</p></div></div>
+      <div class="cap-card cat-blue reveal delay-1"><div class="cap-icon">&#x1F50D;</div><div><h4>Incident History Search</h4><p>Searches past incident tickets by alert name, service, or error pattern. Surfaces past root causes, resolutions, and open action items. Pattern matching against institutional memory.</p></div></div>
+      <div class="cap-card cat-blue reveal delay-2"><div class="cap-icon">&#x1F4D6;</div><div><h4>Knowledge Base &amp; Documentation Search</h4><p>Full-text search across internal documentation, runbooks, and knowledge base articles. Alert-to-runbook mapping for instant context retrieval.</p></div></div>
+      <div class="cap-card cat-blue reveal delay-1"><div class="cap-icon">&#x1F6E0;&#xFE0F;</div><div><h4>Infrastructure Log Queries</h4><p>Direct log queries against team-owned infrastructure components &mdash; synthetic testers, routers, proxies, and load balancers across multiple cloud projects and regions.</p></div></div>
+      <div class="cap-card cat-blue reveal delay-2"><div class="cap-icon">&#x1F517;</div><div><h4>End-to-End Traffic Chain Visibility</h4><p>Full observability across the traffic chain &mdash; from edge to backend. Cross-project log correlation: query routing layers for upstream errors, synthetic testers for external results, and core services for health &mdash; all in a single investigation flow.</p></div></div>
+
+      <div class="cap-category reveal"><span class="cat-dot" style="background:var(--rose)"></span> SRE Overlay Layer &mdash; Operational Extensions</div>
+
+      <div class="cap-card cat-rose reveal delay-1"><div class="cap-icon">&#x1F6A8;</div><div><h4>Blast Radius Assessment</h4><p>Mandatory impact scoping before root cause analysis. Quantifies affected tenants, sessions, pods, regions, services, and duration. Data-driven escalation from &ldquo;negligible&rdquo; to &ldquo;critical&rdquo; &mdash; never assumed, always measured.</p></div></div>
+      <div class="cap-card cat-rose reveal delay-2"><div class="cap-icon">&#x1F6E1;&#xFE0F;</div><div><h4>Adversarial Investigation Verifier</h4><p>Mandatory adversarial gate. Cross-checks every query against the original alert parameters: time window, cloud project, region, namespace, pod, and conclusion-evidence consistency. Born from a real misdiagnosis. A single CRITICAL failure invalidates the entire investigation.</p></div></div>
+      <div class="cap-card cat-rose reveal delay-1"><div class="cap-icon">&#x1F333;</div><div><h4>Incident Scoping Decision Tree</h4><p>Structured blast radius determination for any failure. Service A is down? Complete outage. Service B is down? Broken flow only. Instant service-failure-to-impact mapping using proven troubleshooting patterns.</p></div></div>
+
+      <div class="cap-category reveal"><span class="cat-dot" style="background:var(--purple)"></span> Domain Knowledge Layer &mdash; Architecture &amp; Context</div>
+
+      <div class="cap-card cat-purple reveal delay-1"><div class="cap-icon">&#x1F30D;</div><div><h4>Environment Reference</h4><p>Every cloud project, cluster, region, namespace, endpoint, and health URL across all environments. Copy-paste query templates for any environment. The context needed to ask the right question.</p></div></div>
+      <div class="cap-card cat-purple reveal delay-2"><div class="cap-icon">&#x1F3D7;&#xFE0F;</div><div><h4>Architecture Overview</h4><p>Request lifecycle, dependency graph, security model, communication topology, and failure cascade patterns. Built through autonomous learning &mdash; the agent mapped the system itself.</p></div></div>
+      <div class="cap-card cat-purple reveal delay-1"><div class="cap-icon">&#x1F9EC;</div><div><h4>Service Deep Dives</h4><p>Critical paths, configuration, metrics, failure modes, and symptom-to-cause mapping for every core service. Dense domain knowledge that enables accurate interpretation of raw telemetry.</p></div></div>
+      <div class="cap-card cat-purple reveal delay-2"><div class="cap-icon">&#x1F4CB;</div><div><h4>Service Catalog</h4><p>Complete service registry: repo, language, role, dependencies, and alert patterns. Schemas, thresholds, and cross-service relationships &mdash; all reusable across other agents.</p></div></div>
+      <div class="cap-card cat-purple reveal delay-1"><div class="cap-icon">&#x1F4DD;</div><div><h4>Log Format Schema</h4><p>Every log field documented. Log envelope structure, payload fields, tracing context, protocol-specific fields, and error shapes.</p></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+</div>
+
+<footer>
+  <p><span class="footer-brand">SRE AI Agent</span> &mdash; 100% Markdown, No-Code &mdash; Built with Cursor</p>
+</footer>
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const observerOptions = { root: null, rootMargin: '0px', threshold: 0.15 };
+    const observer = new IntersectionObserver((entries, observer) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('active');
+          observer.unobserve(entry.target); // Run once per element
+        }
+      });
+    }, observerOptions);
+
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+  });
+</script>
+
+</body>
+</html>
